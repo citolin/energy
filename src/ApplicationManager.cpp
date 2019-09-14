@@ -38,20 +38,23 @@ void ApplicationManager::resetMeasures() {
 void ApplicationManager::averageADE() {
     this->timesAveraged++;
 
-    // TODO - Maybe it's worth making a jump function pointer table
+    std::function<float(void)> pf[QUANTITIES_MEASURED] = {
+        std::bind(&ADE9000::getCurrent, this->ade),
+        std::bind(&ADE9000::getVoltage, this->ade),
+        std::bind(&ADE9000::getFrequency, this->ade),
+        std::bind(&ADE9000::getPowerFactor, this->ade),
+        std::bind(&ADE9000::getApparentPower, this->ade),
+        std::bind(&ADE9000::getActivePower, this->ade),
+        std::bind(&ADE9000::getReactivePower, this->ade)
+    };    
 
-    this->measures[CURRENT] = addToMeasure( this->measures[CURRENT], this->ade->getCurrent(), this->timesAveraged );
-    this->measures[VOLTAGE] = addToMeasure( this->measures[VOLTAGE], this->ade->getVoltage(), this->timesAveraged );
-    this->measures[FREQUENCY] = addToMeasure( this->measures[FREQUENCY], this->ade->getFrequency(), this->timesAveraged );
-    this->measures[POWER_FACTOR] = addToMeasure( this->measures[POWER_FACTOR], this->ade->getPowerFactor(), this->timesAveraged );
-    this->measures[APPARENT_POWER] = addToMeasure( this->measures[APPARENT_POWER], this->ade->getApparentPower(), this->timesAveraged );
-    this->measures[ACTIVE_POWER] = addToMeasure( this->measures[ACTIVE_POWER], this->ade->getActivePower(), this->timesAveraged );
-    this->measures[REACTIVE_POWER] = addToMeasure( this->measures[REACTIVE_POWER], this->ade->getReactivePower(), this->timesAveraged );
+    for(uint8_t i=0;i<QUANTITIES_MEASURED;i++)
+        this->measures[i] = addToMeasure( this->measures[i], pf[i](), this->timesAveraged );
 
     // Serial.println("\n--------------------------------");
     // Serial.printf("Times read: %u\n", this->timesAveraged);
     // Serial.printf("[CURRENT]: \t%f\n[VOLTAGE]: \t%f\n[FREQUENCY]: \t%f\n[POWER FACTOR]: \t%f\n", this->measures[CURRENT], this->measures[VOLTAGE], this->measures[FREQUENCY], this->measures[POWER_FACTOR]);
-    // Serial.printf("[APARENT POWER]: \t%f\n[ACTIVE POWER]: \t%f\n[REACTIVE POWER]: \t%f\n", this->measures[APPARENT_POWER], this->measures[ACTIVE_POWER], this->measures[REACTIVE_POWER], this->measures[POWER_FACTOR]);
+    // Serial.printf("[APARENT POWER]: \t%f\n[ACTIVE POWER]: \t%f\n[REACTIVE POWER]: \t%f\n", this->measures[APPARENT_POWER], this->measures[ACTIVE_POWER], this->measures[REACTIVE_POWER]);
 }
 
 void ApplicationManager::loop()

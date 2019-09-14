@@ -18,7 +18,7 @@
 #define REACTIVE_POWER 5
 #define APPARENT_POWER 6
 
-#define QUANTITIES_MEASURED 6
+#define QUANTITIES_MEASURED 7
 
 class ApplicationManager
 {
