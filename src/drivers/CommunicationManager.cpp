@@ -2,8 +2,12 @@
 
 CommunicationManager::CommunicationManager()
 {
+    isWifiConnected = false;
+
+    WiFi.onEvent( std::bind( &CommunicationManager::onWiFiEvent, this, std::placeholders::_1 ) );
+    connectToWifiAssynch(SSID, PASSWORD);
+
     mqtt = MQTTSingleton::getInstance(BROKER);
-    mqtt->connectAssync();
     mqtt->registerOnDataCallback( std::bind(&CommunicationManager::onMQTTCallback, this, std::placeholders::_1) );
 
     Serial.println("> Started MQTT Client");
@@ -21,16 +25,13 @@ CommunicationManager::CommunicationManager()
     Serial.println("> Started HTTP Server");
 
     udp = new UDPAbstraction();
-    udp->registerOnDataCallback( std::bind(&CommunicationManager::onUDPCallback, this, std::placeholders::_1) );
-
-    WiFi.onEvent( std::bind( &CommunicationManager::onWiFiEvent, this, std::placeholders::_1 ) );
-    connectToWifiAssynch(SSID, PASSWORD);
+    udp->registerOnDataCallback( std::bind(&CommunicationManager::onUDPCallback, this, std::placeholders::_1, std::placeholders::_2) );
 }
 
 CommunicationManager::~CommunicationManager() {}
 
 void CommunicationManager::onSerialCallback(String data) {
-    Serial.printf("-> [SERIAL]: %s\n", data.c_str());
+    Serial.printf(">>> [SERIAL]: %s\n", data.c_str());
 
 
 }
@@ -47,36 +48,46 @@ void CommunicationManager::onHTTPCallback(String data) {
 
 }
 
-void CommunicationManager::onUDPCallback(String data) {
-    Serial.printf(">>> [UDP]: %s\n", data.c_str());
+void CommunicationManager::onUDPCallback(String data, String senderIP) {
+    Serial.printf(">>> [UDP]: %s - %s\n", senderIP.c_str(), data.c_str());
 
 
 }
 
 void CommunicationManager::broadcast(String data)
 {
+    if(!isWifiConnected)
+        Serial.println("> Couldn't broadcast due to no wifi connection.");
+
     mqtt->publish((char *)WiFi.macAddress().c_str(), (char *)data.c_str());
     mqtt->publish("/devices", (char *)WiFi.macAddress().c_str());
+
+    udp->broadcast((char*)WiFi.macAddress().c_str());
 }
 
 void CommunicationManager::loop() {
-    reconnectToWifi();
+    if(!isWifiConnected)
+        return;
 
     mqtt->loop();
     serial->loop();
     udp->loop();
 }
 
-
-
 void CommunicationManager::startWifiCommunications() {
     udp->start();
     server->start();
+    mqtt->start();
+
+    isWifiConnected = true;
 }
 
 void CommunicationManager::stopWifiCommunications() {
     udp->stop();
     server->stop();
+    mqtt->stop();
+
+    isWifiConnected = false;
 }
 
 void CommunicationManager::onWiFiEvent(WiFiEvent_t event) {

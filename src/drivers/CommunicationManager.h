@@ -8,9 +8,13 @@
 #include "wifi/wifi-utils.h"
 #include "udp/UDPAbstraction.h"
 
-#define SSID "ICTS"
-#define PASSWORD "icts@2019"
-#define BROKER "172.17.5.20"
+// #define SSID "ICTS"
+// #define PASSWORD "icts@2019"
+// #define BROKER "172.17.5.20"
+
+#define SSID "citolin"
+#define PASSWORD "jirafo@1966"
+#define BROKER "192.168.0.5"
 
 class CommunicationManager
 {
@@ -19,6 +23,8 @@ private:
     SerialAbstraction *serial;
     HTTPServer *server;
     UDPAbstraction *udp;
+
+    bool isWifiConnected;
 
     void onWiFiEvent(WiFiEvent_t event);
     void startWifiCommunications();
@@ -35,7 +41,7 @@ public:
     void onSerialCallback(String data);
     void onMQTTCallback(String data);
     void onHTTPCallback(String data);
-    void onUDPCallback(String data);
+    void onUDPCallback(String data, String senderIP);
 };
 
 #endif

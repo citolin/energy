@@ -2,10 +2,12 @@
 
 ApplicationManager::ApplicationManager() : measures(QUANTITIES_MEASURED)
 {
+    // this->lastBroadcast = 0;
+    // this->lastMeasure = 0;
+    
     setBroadcastFrequency(10);
     this->broadcastFreq = (unsigned long) getBroadcastFrequency() * 1000;
-    pinMode(2, OUTPUT);
-
+    
     this->resetMeasures();
 
     this->ade = new ADE9000();
@@ -35,6 +37,8 @@ void ApplicationManager::resetMeasures() {
 
 void ApplicationManager::averageADE() {
     this->timesAveraged++;
+
+    // TODO - Maybe it's worth making a jump function pointer table
 
     this->measures[CURRENT] = addToMeasure( this->measures[CURRENT], this->ade->getCurrent(), this->timesAveraged );
     this->measures[VOLTAGE] = addToMeasure( this->measures[VOLTAGE], this->ade->getVoltage(), this->timesAveraged );

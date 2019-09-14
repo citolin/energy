@@ -24,9 +24,11 @@ public:
 
     void publish(char *topic, char *data);
     void parser(String &topic, String &payload);
-    void connectSync();
-    void connectAssync();
+    void connect();
     void loop();
+
+    void start();
+    void stop();
 };
 
 #endif

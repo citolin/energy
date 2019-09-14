@@ -6,22 +6,23 @@
 #include <WiFiUdp.h>
 #include <functional>
 
-#define UDP_LISTENER_PORT 9997
-#define UDP_BROADCAST_PORT 9998
-#define UDP_BROADCAST_ADDRESS "255.255.255.255"
+#define UDP_LISTENER_PORT 9998
+#define UDP_BROADCAST_PORT 9997
+// #define UDP_BROADCAST_ADDRESS "255.255.255.255"
+#define UDP_BROADCAST_ADDRESS "192.168.0.255"
 
 class UDPAbstraction {
     private:
         WiFiUDP udpListener;
         WiFiUDP udpBroadcast;
 
-        std::function<void(String)> onDataCallback;
+        std::function<void(String, String)> onDataCallback;
 
     public:
         UDPAbstraction();
         ~UDPAbstraction();
 
-        void registerOnDataCallback( std::function<void(String)> callback );
+        void registerOnDataCallback( std::function<void(String, String)> callback );
 
         void start();
         void stop();
