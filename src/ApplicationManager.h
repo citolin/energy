@@ -2,6 +2,8 @@
 #define APPLICATIONMANAGER_H_
 
 #include <Arduino.h>
+#include <unordered_map>
+#include <functional>
 #include "drivers/CommunicationManager.h"
 #include "drivers/ade/ade9000.h"
 
@@ -45,6 +47,7 @@ public:
 
     void loop();
     void resetMeasures();
+    std::unordered_map<const char *, float> onCallback(uint8_t event, std::unordered_map<const char *, float> params);
 };
 
 #endif
