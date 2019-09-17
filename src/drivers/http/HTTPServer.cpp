@@ -6,9 +6,9 @@ HTTPServer::HTTPServer() : server(SERVER_PORT) {
 		Serial.printf("[POST]: %s\n", request->url().c_str() );
 
 		// TODO - Cut the data char vector to the len size ending with '\0'
-		if(this->onDataCallback && len)
-			this->onDataCallback( String( (char*) data) );
-
+		if(len)
+			this->callCallback( String( (char*)data ) );
+			
 		request->send(200, "OK");
 	});
 	
@@ -22,8 +22,4 @@ void HTTPServer::start() {
 
 void HTTPServer::stop() {
 	server.end();
-}
-
-void HTTPServer::registerOnDataCallback( std::function<void(String)> callback ) {
-	this->onDataCallback = callback;
 }

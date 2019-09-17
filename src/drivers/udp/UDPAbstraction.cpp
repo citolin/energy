@@ -15,10 +15,6 @@ void UDPAbstraction::stop() {
     udpBroadcast.stop();
 }
 
-void UDPAbstraction::registerOnDataCallback( std::function<void(String, String)> callback ) {
-    this->onDataCallback = callback;
-}
-
 void UDPAbstraction::loop() {
     if(!WiFi.isConnected())
         return;
@@ -29,8 +25,7 @@ void UDPAbstraction::loop() {
         String data = udpListener.readStringUntil('\n');
         IPAddress senderIP = udpListener.remoteIP();
 
-        if(onDataCallback)
-            onDataCallback(data, senderIP.toString() );
+        this->callCallback(data, senderIP.toString());
     }
 }
 

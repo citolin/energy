@@ -4,7 +4,7 @@
 
 ApplicationManager *app;
 
-#define EEPROM_SIZE 1000
+#define EEPROM_SIZE 4096
 
 void setup()
 {

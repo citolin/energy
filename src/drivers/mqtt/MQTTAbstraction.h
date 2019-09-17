@@ -4,25 +4,25 @@
 #include <Arduino.h>
 #include <MQTT.h>
 #include <WiFi.h>
-#include <functional>
 
-class MQTTAbstraction
+#include "../../abstraction/CallbackClass.h"
+
+#define CONFIG_TOPIC "/config"
+#define RETURN_TOPIC "/return"
+
+class MQTTAbstraction : public CallbackClass
 {
 private:
     WiFiClient net;
     MQTTClient client;
     String broker;
 
-    std::function<void(String)> onDataCallback;
-
-
 public:
     MQTTAbstraction(const char *broker);
     ~MQTTAbstraction();
 
-    void registerOnDataCallback(std::function<void(String)> callback);    
-
     void publish(char *topic, char *data);
+    void publishConfig(String data);
     void parser(String &topic, String &payload);
     void connect();
     void loop();

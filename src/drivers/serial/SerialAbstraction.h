@@ -4,15 +4,12 @@
 #include <Arduino.h>
 #include <functional>
 
-class SerialAbstraction {
-    private:
-        std::function<void(String)> onDataCallback;
+#include "../../abstraction/CallbackClass.h"
 
+class SerialAbstraction : public CallbackClass {
     public:
         SerialAbstraction();
         ~SerialAbstraction();
-
-        void registerOnDataCallback(std::function<void(String)> callback);    
 
         void loop();
 };

@@ -7,10 +7,11 @@ ApplicationManager::ApplicationManager() : measures(QUANTITIES_MEASURED)
     this->lastBroadcast = millis();
     this->lastMeasure = millis();
 
-    setBroadcastFrequency(10);
-    this->broadcastFreq = (unsigned long)getBroadcastFrequency() * 1000;
+    // DATA::writeWifi("ICTS", "icts@2019");
+    // DATA::writeBroadcastFrequency(10);
+    this->broadcastFreq = convertSecToMilli( DATA::readBroadcastFrequency() );
 
-    this->resetMeasures();
+    this->resetMeasures();  
 
     this->ade = new ADE9000();
     this->comm = new CommunicationManager();
@@ -60,7 +61,7 @@ std::unordered_map<const char *, float> ApplicationManager::onCallback(uint8_t e
 {
     switch (event)
     {
-    case EVENT_READ_MEASURES:
+    case PROTOCOL_READ_MEASURES:
     {
         Serial.println("-- EVENT READ MEASURES");
 
@@ -72,19 +73,15 @@ std::unordered_map<const char *, float> ApplicationManager::onCallback(uint8_t e
             it.second = this->measures[i];
             i++;
         }
-
         return mapMeasures;
         break;
     }
-    case EVENT_READ_BROADCAST_FREQ:
-    {
-        Serial.println("-- EVENT READ BROADCAST FREQUENCY");
-        
-        static std::unordered_map<const char*, float> mapBroadcastFrequency{
-            {"broadcast_frequency", 0.0f}
-        };
-        mapBroadcastFrequency["broadcast_frequency"] = getBroadcastFrequency();
-        return mapBroadcastFrequency;
+    case PROTOCOL_READ_WRITE_BROADCAST_FREQ: {
+        Serial.println("-- EVENT WRITE BROADCAST FREQUENCY");
+
+        DATA::writeBroadcastFrequency(params["frequency"]);
+        this->broadcastFreq = convertSecToMilli( params["frequency"] );
+        return std::unordered_map<const char *, float>{ {"status", 1} };
         break;
     }
     default:
@@ -93,6 +90,8 @@ std::unordered_map<const char *, float> ApplicationManager::onCallback(uint8_t e
     }
     }
 }
+
+// {G10}
 
 void ApplicationManager::loop()
 {
@@ -103,14 +102,15 @@ void ApplicationManager::loop()
     // Read ADE and take measure
     if ((actualMillis - this->lastMeasure) > ADE_READ_FREQUENCY)
     {
-        this->lastMeasure = millis();
+        this->lastMeasure = actualMillis;
         this->averageADE();
     }
 
     // Broadcast values
     if ((actualMillis - this->lastBroadcast) > this->broadcastFreq)
     {
-        this->lastBroadcast = millis();
+        this->lastBroadcast = actualMillis;
         this->broadcast();
     }
+
 }

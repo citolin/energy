@@ -1,6 +1,6 @@
 #include "wifi-utils.h"
 
-void connectToWifiSynch(const char *ssid, const char *password)
+void WIFI::connectToWifiSynch(const char *ssid, const char *password)
 {
 	WiFi.begin(ssid, password);
 
@@ -15,21 +15,21 @@ void connectToWifiSynch(const char *ssid, const char *password)
 	Serial.printf("\nSSID: %s\nPASSWORD: %s\nIP: %s\n\n", ssid, password, WiFi.localIP().toString().c_str());
 }
 
-void connectToWifiAssynch(const char *ssid, const char *password)
+void WIFI::connectToWifiAssynch(const char *ssid, const char *password)
 {
 	if(WiFi.status() != WL_CONNECTED)
 		WiFi.begin(ssid, password);
 }
 
 // TODO -- Better understanding of how to reconnect
-void reconnectToWifi()
+void WIFI::reconnectToWifi()
 {
     // if( !WiFi.isConnected() )
     //     WiFi.reconnect();
 }
 
 
-void WiFiEvent(WiFiEvent_t event)
+void WIFI::WiFiEvent(WiFiEvent_t event)
 {
     // Serial.printf("[WiFi-event] event: %d\n", event);
     Serial.print("> ");

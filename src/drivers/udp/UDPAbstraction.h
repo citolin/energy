@@ -4,25 +4,23 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <functional>
+
+#include "../../abstraction/CallbackClass.h"
 
 #define UDP_LISTENER_PORT 9998
 #define UDP_BROADCAST_PORT 9997
-// #define UDP_BROADCAST_ADDRESS "255.255.255.255"
-#define UDP_BROADCAST_ADDRESS "192.168.0.255"
+#define UDP_BROADCAST_ADDRESS "172.17.255.255"
+// #define UDP_BROADCAST_ADDRESS "192.168.0.255"
 
-class UDPAbstraction {
+class UDPAbstraction : public CallbackClass
+{
     private:
         WiFiUDP udpListener;
         WiFiUDP udpBroadcast;
 
-        std::function<void(String, String)> onDataCallback;
-
     public:
         UDPAbstraction();
         ~UDPAbstraction();
-
-        void registerOnDataCallback( std::function<void(String, String)> callback );
 
         void start();
         void stop();

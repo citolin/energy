@@ -31,10 +31,6 @@ void MQTTAbstraction::start() {
 void MQTTAbstraction::stop() {
 }
 
-void MQTTAbstraction::registerOnDataCallback(std::function<void(String)> callback) {
-	this->onDataCallback = callback;
-}   
-
 void MQTTAbstraction::connect() {
 	if(!WiFi.isConnected())
 		return;
@@ -44,16 +40,19 @@ void MQTTAbstraction::connect() {
 
 		if(this->client.connect(WiFi.macAddress().c_str(), "try", "try")) {
 			Serial.printf("> MQTT Broker connected at %s\n", this->broker.c_str());
-			this->client.subscribe( WiFi.macAddress() + "/config" );
+			this->client.subscribe( WiFi.macAddress() + CONFIG_TOPIC );
 		}
 		else
 			Serial.println("> Unable to connect to MQTT Broker");
 	}
 }
 
+void MQTTAbstraction::publishConfig(String data) {
+	this->client.publish( WiFi.macAddress() + RETURN_TOPIC, data.c_str() );
+}
+
 void MQTTAbstraction::parser(String &topic, String &payload) {
-	if(this->onDataCallback)
-		this->onDataCallback(payload);
+	this->callCallback(payload);
 }
 
 void MQTTAbstraction::publish(char *topic, char *data) {

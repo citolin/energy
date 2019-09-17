@@ -5,23 +5,21 @@
 
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include <functional>
+
+#include "../../abstraction/CallbackClass.h"
 
 #define SERVER_PORT 80
 
-
-class HTTPServer {
+class HTTPServer : public CallbackClass
+{
 private:
     AsyncWebServer server;
 
-    std::function<void(String)> onDataCallback;
     void onConfig();
 
 public:
     HTTPServer();
     ~HTTPServer();
-
-    void registerOnDataCallback( std::function<void(String)> callback );
 
     void start();
     void stop();
