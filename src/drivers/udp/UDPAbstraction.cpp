@@ -37,5 +37,5 @@ void UDPAbstraction::broadcast(String data) {
     size_t size = udpBroadcast.write( (const uint8_t*) data.c_str(), (size_t) data.length());
     bool sent = udpBroadcast.endPacket();
 
-    Serial.printf("[UDP Broadcast] Packets: %d - %d bytes -- Sent: %s\n", packet, size, sent?"true":"false");
+    // Serial.printf("[UDP Broadcast] Packets: %d - %d bytes -- Sent: %s\n", packet, size, sent?"true":"false");
 }

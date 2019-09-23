@@ -26,13 +26,19 @@ CommunicationManager::CommunicationManager()
 
     Serial.println("> Started Serial Reader");
 
-    // 4. Start HTTP API
+    // 4. Start reading LORA Serial Port
+    lora = new LORA();
+    lora->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onLORACallback, this, std::placeholders::_1)));
+
+    Serial.println("> Started LORA Reader");
+
+    // 5. Start HTTP API
     server = new HTTPServer();
     server->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onHTTPCallback, this, std::placeholders::_1)));
 
     Serial.println("> Started HTTP Server");
 
-    // 5. Start UDP Socket
+    // 6. Start UDP Socket
     udp = new UDPAbstraction();
     udp->registerCallback(static_cast<std::function<void(String, String)>>(std::bind(&CommunicationManager::onUDPCallback, this, std::placeholders::_1, std::placeholders::_2)));
 }
@@ -70,20 +76,39 @@ void CommunicationManager::onUDPCallback(String data, String senderIP)
     Serial.printf(">>> [UDP]: %s - %s\n", senderIP.c_str(), data.c_str());
 }
 
-void CommunicationManager::broadcast(String data)
+void CommunicationManager::onLORACallback(String data)
 {
+    Serial.printf(">>> [LORA]: %s \n", data.c_str());
+
+    String re = preParser(data);
+    lora->write(re);
+}
+
+String CommunicationManager::formatMeasuresBroadcast(std::unordered_map<const char *, float> values)
+{
+    String s = ";" + String(values[MAP_CURRENT]) + ";" + String(values[MAP_VOLTAGE]) + ";" + String(values[MAP_FREQUENCY]) + ";" + String(values[MAP_POWER_FACTOR]) + ";" + String(values[MAP_REACTIVE_POWER]) + ";" + String(values[MAP_APPARENT_POWER]) + ";" + String(values[MAP_ACTIVE_POWER]);
+    return this->formatProtocol(PROTOCOL_BROADCAST, s);
+}
+
+void CommunicationManager::broadcast(std::unordered_map<const char *, float> values)
+{
+    String data = this->formatMeasuresBroadcast(values);
+
+    lora->write(data);
+    serial->write(data);
+
     if (!isWifiConnected)
         Serial.println("> Couldn't broadcast due to no wifi connection.");
 
     mqtt->publish((char *)WiFi.macAddress().c_str(), (char *)data.c_str());
     mqtt->publish(MQTT_GENERAL_TOPIC, (char *)WiFi.macAddress().c_str());
-
     udp->broadcast((char *)WiFi.macAddress().c_str());
 }
 
 void CommunicationManager::loop()
 {
     serial->loop();
+    lora->loop();
 
     if (!isWifiConnected)
         return;
@@ -110,28 +135,31 @@ void CommunicationManager::stopWifiCommunications()
     isWifiConnected = false;
 }
 
-String CommunicationManager::formatProtocol(char id, String payload) {
+String CommunicationManager::formatProtocol(char id, String payload)
+{
     return String(PROTOCOL_HEADER) + String(id) + payload + String(PROTOCOL_END);
 }
 
-String CommunicationManager::formatACK(char id) {
+String CommunicationManager::formatACK(char id)
+{
     return String(PROTOCOL_HEADER) + String(ACK) + String(id) + String(PROTOCOL_END);
 }
 
-String CommunicationManager::preParser(String data) {
+String CommunicationManager::preParser(String data)
+{
     std::vector<String> v;
     bool reading = false;
     short start = 0;
-    for(short i=0;i<data.length();i++)
+    for (short i = 0; i < data.length(); i++)
     {
-        if(data[i] == PROTOCOL_HEADER && !reading)
+        if (data[i] == PROTOCOL_HEADER && !reading)
         {
             reading = true;
             start = i + 1;
         }
-        else if(data[i] == PROTOCOL_END && reading)
+        else if (data[i] == PROTOCOL_END && reading)
         {
-            v.push_back( data.substring(start, i) );
+            v.push_back(data.substring(start, i));
             reading = false;
         }
     }
@@ -141,7 +169,7 @@ String CommunicationManager::preParser(String data) {
     //      by having a class queue (would have to be a std::pair<uint8_t, String>)
     //      by returning the vector (more repetitive code)
     //          chose this way for no reason. I don't even like it.
-    for(short i=0;i<v.size();i++)
+    for (short i = 0; i < v.size(); i++)
         r += this->parser(v[i]);
     return r;
 }
@@ -151,20 +179,20 @@ String CommunicationManager::parser(String data)
     std::unordered_map<const char *, float> params;
     std::unordered_map<const char *, float> values;
 
-    char id =  data.charAt(PROTOCOL_ID);
+    char id = data.charAt(PROTOCOL_ID);
     data.remove(PROTOCOL_ID, 1);
     switch (id)
     {
-    // READ: {ID}       WRITE: { ID SSID ; PASSWORD } 
+    // READ: {ID}       WRITE: { ID SSID ; PASSWORD }
     case PROTOCOL_READ_WRITE_WIFI:
     {
         Serial.printf("Protocol %c - Setup WiFi\n\t%s\n", id, data.c_str());
-        
+
         // If it's the READ wifi, then it comes with only the ID
-        if(data.length() == READ_LENGTH)
+        if (data.length() == READ_LENGTH)
         {
-            std::pair<String,String> wifiSetup = DATA::readWifi();
-            return this->formatProtocol(id, (wifiSetup.first + ";" + wifiSetup.second) );
+            std::pair<String, String> wifiSetup = DATA::readWifi();
+            return this->formatProtocol(id, (wifiSetup.first + ";" + wifiSetup.second));
         }
 
         // Else it's WRITE wifi
@@ -178,12 +206,13 @@ String CommunicationManager::parser(String data)
         return this->formatACK(id);
     }
     // READ: {ID}            WRITE: { ID BROADCAST_FREQUENCY }
-    case PROTOCOL_READ_WRITE_BROADCAST_FREQ: {
-        Serial.printf("Protocol F - Setup broadcast frequency\n\t%s\n", data.c_str());
+    case PROTOCOL_READ_WRITE_BROADCAST_FREQ:
+    {
+        Serial.printf("Protocol %c - Setup broadcast frequency\n\t%s\n", id, data.c_str());
         // Read frequency protocol
-        if(data.length() == READ_LENGTH)
-            return this->formatProtocol( id, String(DATA::readBroadcastFrequency()) );
-        
+        if (data.length() == READ_LENGTH)
+            return this->formatProtocol(id, String(DATA::readBroadcastFrequency()));
+
         // Write frequency protocol
         float freq = data.toFloat();
         params[MAP_BROADCAST_FREQUENCY] = freq;
@@ -191,28 +220,27 @@ String CommunicationManager::parser(String data)
         String s = this->formatACK(id);
         return s;
     }
+    case PROTOCOL_BROADCAST:
+    {
+        Serial.printf("Protocol %c - Set broadcast\n\t%s\n", id, data.c_str());
+        values = this->callback(id, params);
+        // return this->formatProtocol(id, s);
+        return this->formatACK(id);
+    }
+    case PROTOCOL_PRINT_STATUS:
+    {
+        Serial.printf("Protocol %c - Print status\n\t%s\n", id, data.c_str());
+        values = this->callback(id, params);
+        return this->formatACK(id);
+    }
     default:
     {
         return ERROR_UNKOWN_PROTOCOL;
     }
     }
-    
-    return ERROR_UNKOWN_PROTOCOL;    
+
+    return ERROR_UNKOWN_PROTOCOL;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void CommunicationManager::onWiFiEvent(WiFiEvent_t event)
 {

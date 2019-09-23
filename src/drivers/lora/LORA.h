@@ -1,15 +1,17 @@
-#ifndef SERIALABSTRACTION_H_
-#define SERIALABSTRACTION_H_
+#ifndef LORA_H_
+#define LORA_H_
 
 #include <Arduino.h>
 #include <functional>
 
+#define LORA_BAUDRATE 9600
+
 #include "../../abstraction/CallbackClass.h"
 
-class SerialAbstraction : public CallbackClass {
+class LORA : public CallbackClass {
     public:
-        SerialAbstraction();
-        ~SerialAbstraction();
+        LORA();
+        ~LORA();
 
         void loop();
         void write(String data);

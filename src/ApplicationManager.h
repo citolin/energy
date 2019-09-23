@@ -37,9 +37,11 @@ private:
     // Measured quantities
     std::vector<float> measures;
     unsigned timesAveraged;
+    std::unordered_map<const char *, float> mapMeasures;
 
     void broadcast();
     void averageADE();
+    void printGeneral();
 
 public:
     ApplicationManager();

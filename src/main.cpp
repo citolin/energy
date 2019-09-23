@@ -9,7 +9,7 @@ ApplicationManager *app;
 void setup()
 {
 	Serial.begin(9600);
-
+	
 	EEPROM.begin(EEPROM_SIZE);
 
 	delay(2000);

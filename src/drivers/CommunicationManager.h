@@ -10,6 +10,7 @@
 #include "serial/SerialAbstraction.h"
 #include "wifi/wifi-utils.h"
 #include "udp/UDPAbstraction.h"
+#include "lora/LORA.h"
 
 #define MINIMAL_PROTOCOL_SIZE 3
 #define INDEX_HEADER 0
@@ -38,6 +39,7 @@ private:
     SerialAbstraction *serial;
     HTTPServer *server;
     UDPAbstraction *udp;
+    LORA *lora;
 
     bool isWifiConnected;
 
@@ -51,16 +53,18 @@ private:
     String parser(String data);
     String formatProtocol(char id, String payload);
     String formatACK(char id);
+    String formatMeasuresBroadcast(std::unordered_map<const char*,float> values);
 
 public:
     CommunicationManager();
     ~CommunicationManager();
 
     void loop();
-    void broadcast(String data);
+    void broadcast(std::unordered_map<const char*,float> values);
 
     // Callbacks
     void onSerialCallback(String data);
+    void onLORACallback(String data);
     void onMQTTCallback(String data);
     void onHTTPCallback(String data);
     void onUDPCallback(String data, String senderIP);

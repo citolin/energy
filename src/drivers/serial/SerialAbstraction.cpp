@@ -14,3 +14,7 @@ void SerialAbstraction::loop()
             this->callCallback(temp);
     }
 }
+
+void SerialAbstraction::write(String data) {
+    // Serial.println(data);
+}

@@ -7,11 +7,12 @@ ApplicationManager::ApplicationManager() : measures(QUANTITIES_MEASURED)
     this->lastBroadcast = millis();
     this->lastMeasure = millis();
 
-    // DATA::writeWifi("ICTS", "icts@2019");
-    // DATA::writeBroadcastFrequency(10);
-    this->broadcastFreq = convertSecToMilli( DATA::readBroadcastFrequency() );
+    this->mapMeasures = {
+        {MAP_CURRENT, 0.0f}, {MAP_VOLTAGE, 0.0f}, {MAP_FREQUENCY, 0.0f}, {MAP_POWER_FACTOR, 0.0f}, {MAP_APPARENT_POWER, 0.0f}, {MAP_ACTIVE_POWER, 0.0f}, {MAP_REACTIVE_POWER, 0.0f}};
 
-    this->resetMeasures();  
+    this->broadcastFreq = convertSecToMilli(DATA::readBroadcastFrequency());
+
+    this->resetMeasures();
 
     this->ade = new ADE9000();
     this->comm = new CommunicationManager();
@@ -22,10 +23,13 @@ ApplicationManager::~ApplicationManager() {}
 
 void ApplicationManager::broadcast()
 {
-    String var = "{\"c\": " + String(this->measures[CURRENT]) + ", \"t\": " + String(this->measures[VOLTAGE]) + ", \"f\": " + String(this->measures[FREQUENCY]) + ", \"fp\": " + String(this->measures[POWER_FACTOR]) + ", \"pat\": " + String(this->measures[ACTIVE_POWER]) + ", \"pr\": " + String(this->measures[REACTIVE_POWER]) + ", \"pap\":" + String(this->measures[APPARENT_POWER]) + " }";
-
-    Serial.printf("Broadcasting %s\n", WiFi.macAddress().c_str());
-    this->comm->broadcast(var);
+    short i = 0;
+    for (auto &it : this->mapMeasures)
+    {
+        it.second = this->measures[i];
+        i++;
+    }
+    this->comm->broadcast(this->mapMeasures);
 }
 
 void ApplicationManager::resetMeasures()
@@ -51,44 +55,49 @@ void ApplicationManager::averageADE()
     for (uint8_t i = 0; i < QUANTITIES_MEASURED; i++)
         this->measures[i] = addToMeasure(this->measures[i], pf[i](), this->timesAveraged);
 
-    // Serial.println("\n--------------------------------");
-    // Serial.printf("Times read: %u\n", this->timesAveraged);
-    // Serial.printf("[CURRENT]: \t%f\n[VOLTAGE]: \t%f\n[FREQUENCY]: \t%f\n[POWER FACTOR]: \t%f\n", this->measures[CURRENT], this->measures[VOLTAGE], this->measures[FREQUENCY], this->measures[POWER_FACTOR]);
-    // Serial.printf("[APARENT POWER]: \t%f\n[ACTIVE POWER]: \t%f\n[REACTIVE POWER]: \t%f\n", this->measures[APPARENT_POWER], this->measures[ACTIVE_POWER], this->measures[REACTIVE_POWER]);
+    // this->printGeneral();
+}
+
+void ApplicationManager::printGeneral()
+{
+    Serial.println("\n--------------------------------");
+    Serial.printf("Times read: %u\n", this->timesAveraged);
+    Serial.printf("[CURRENT]: \t%f\n[VOLTAGE]: \t%f\n[FREQUENCY]: \t%f\n[POWER FACTOR]: \t%f\n", this->measures[CURRENT], this->measures[VOLTAGE], this->measures[FREQUENCY], this->measures[POWER_FACTOR]);
+    Serial.printf("[APARENT POWER]: \t%f\n[ACTIVE POWER]: \t%f\n[REACTIVE POWER]: \t%f\n", this->measures[APPARENT_POWER], this->measures[ACTIVE_POWER], this->measures[REACTIVE_POWER]);
 }
 
 std::unordered_map<const char *, float> ApplicationManager::onCallback(uint8_t event, std::unordered_map<const char *, float> params)
 {
     switch (event)
     {
-    case PROTOCOL_READ_MEASURES:
+    case PROTOCOL_BROADCAST:
     {
         Serial.println("-- EVENT READ MEASURES");
-
-        static std::unordered_map<const char *, float> mapMeasures{
-            {"current", 0.0f}, {"voltage", 0.0f}, {"frequency", 0.0f}, {"power_factor", 0.0f}, {"apparent_power", 0.0f}, {"active_power", 0.0f}, {"reactive power", 0.0f}};
-        short i = 0;
-        for (auto &it : mapMeasures)
-        {
-            it.second = this->measures[i];
-            i++;
-        }
-        return mapMeasures;
+        this->broadcast();
+        return this->mapMeasures;
         break;
     }
-    case PROTOCOL_READ_WRITE_BROADCAST_FREQ: {
+    case PROTOCOL_READ_WRITE_BROADCAST_FREQ:
+    {
         Serial.println("-- EVENT WRITE BROADCAST FREQUENCY");
 
         DATA::writeBroadcastFrequency(params["frequency"]);
-        this->broadcastFreq = convertSecToMilli( params["frequency"] );
-        return std::unordered_map<const char *, float>{ {"status", 1} };
+        this->broadcastFreq = convertSecToMilli(params["frequency"]);
+        return std::unordered_map<const char *, float>{{"status", 1.0f}};
         break;
+    }
+    case PROTOCOL_PRINT_STATUS:
+    {
+        Serial.println("-- EVENT PRINT GENERAL");
+        this->printGeneral();
+        return std::unordered_map<const char *, float>{{"status", 1.0f}};
     }
     default:
     {
-        Serial.println("\n-- UNKOWN EVENT\n");
+        return std::unordered_map<const char *, float>{{"status", 0.0f}};
     }
     }
+    return std::unordered_map<const char *, float>{{"status", 0.0f}};
 }
 
 // {G10}
@@ -112,5 +121,4 @@ void ApplicationManager::loop()
         this->lastBroadcast = actualMillis;
         this->broadcast();
     }
-
 }
