@@ -7,6 +7,8 @@ ApplicationManager::ApplicationManager() : measures(QUANTITIES_MEASURED)
     this->lastBroadcast = millis();
     this->lastMeasure = millis();
 
+    DATA::writeLoraID(5);
+
     this->mapMeasures = {
         {MAP_CURRENT, 0.0f}, {MAP_VOLTAGE, 0.0f}, {MAP_FREQUENCY, 0.0f}, {MAP_POWER_FACTOR, 0.0f}, {MAP_APPARENT_POWER, 0.0f}, {MAP_ACTIVE_POWER, 0.0f}, {MAP_REACTIVE_POWER, 0.0f}};
 

@@ -32,6 +32,7 @@
 #define MQTT_GENERAL_TOPIC "/devices"
 #define BROKER "172.17.5.81"
 
+
 class CommunicationManager
 {
 private:
@@ -54,6 +55,7 @@ private:
     String formatProtocol(char id, String payload);
     String formatACK(char id);
     String formatMeasuresBroadcast(std::unordered_map<const char*,float> values);
+    bool formatBinaryMeasuresBroadcast(std::unordered_map<const char*, float> values, char *buff, size_t length);
 
 public:
     CommunicationManager();

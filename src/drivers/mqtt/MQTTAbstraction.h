@@ -21,7 +21,9 @@ public:
     MQTTAbstraction(const char *broker);
     ~MQTTAbstraction();
 
-    void publish(char *topic, char *data);
+    void publish(const char *topic, const char *data);
+    void publish(const char *topic, const char *data, int length);
+    
     void publishConfig(String data);
     void parser(String &topic, String &payload);
     void connect();

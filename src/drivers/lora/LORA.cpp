@@ -20,3 +20,7 @@ void LORA::loop()
 void LORA::write(String data) {
     Serial2.println(data);
 }
+
+void LORA::write(char *data) {
+    Serial2.println(data);
+}

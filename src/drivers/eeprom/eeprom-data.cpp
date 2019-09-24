@@ -1,5 +1,17 @@
 #include "eeprom-data.h"
 
+
+float DATA::readLoraID() 
+{
+    return EEPROM.readUChar(OFFSET_LORA_ID);
+}
+
+bool DATA::writeLoraID(uint8_t id)
+{
+    EEPROM.writeUChar(OFFSET_LORA_ID, id);
+    return EEPROM.commit();
+}
+
 bool DATA::writeBroadcastFrequency(float frequency)
 {
     EEPROM.writeFloat(OFFSET_BROADCAST_FREQUENCY, frequency);

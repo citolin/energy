@@ -15,6 +15,7 @@ class LORA : public CallbackClass {
 
         void loop();
         void write(String data);
+        void write(char *data);
 };
 
 #endif

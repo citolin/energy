@@ -1,5 +1,6 @@
 #include "CommunicationManager.h"
 
+#include <CRC32.h>
 #include "events.h"
 #include "../utils/utils.h"
 #include "eeprom/eeprom-data.h"
@@ -86,22 +87,60 @@ void CommunicationManager::onLORACallback(String data)
 
 String CommunicationManager::formatMeasuresBroadcast(std::unordered_map<const char *, float> values)
 {
-    String s = ";" + String(values[MAP_CURRENT]) + ";" + String(values[MAP_VOLTAGE]) + ";" + String(values[MAP_FREQUENCY]) + ";" + String(values[MAP_POWER_FACTOR]) + ";" + String(values[MAP_REACTIVE_POWER]) + ";" + String(values[MAP_APPARENT_POWER]) + ";" + String(values[MAP_ACTIVE_POWER]);
+    String s = ";" + String(values[MAP_CURRENT]) + ";" + String(values[MAP_VOLTAGE]) + ";" + String(values[MAP_FREQUENCY]) + ";" + String(values[MAP_POWER_FACTOR]) + ";" + String(values[MAP_REACTIVE_POWER]) + ";" + String(values[MAP_APPARENT_POWER]) + ";" + String(values[MAP_ACTIVE_POWER]);    
     return this->formatProtocol(PROTOCOL_BROADCAST, s);
+}
+
+bool CommunicationManager::formatBinaryMeasuresBroadcast(std::unordered_map<const char*, float> values, char *str, size_t length)
+{
+    // HEADER + LORA_ID + CMMD_ID       1 + 1 + 1 = 3 bytes
+    //  I, T, F, FP, PA, PAT, PR        4 * 7 = 28 bytes
+    // CHECKSUM END_OF_PACKAGE          4 + 1 = 5 bytes
+    //                           Total: 36 bytes
+    if(length != SIZE_OF_BINARY_BROADCAST_PROTOCOL)
+        return false; 
+
+    char *buff = str;
+    char header = PROTOCOL_HEADER;
+    char loraID = DATA::readLoraID();
+    char cmmd = PROTOCOL_BROADCAST;
+    memcpy( buff, &header, sizeof(char) ); buff++;
+    memcpy( buff, &loraID, sizeof(char) ); buff++;
+    memcpy( buff, &cmmd, sizeof(char) ); buff++;
+    uint8_t numebrOfMeasures = 7;
+    const char *indexes[numebrOfMeasures] = { MAP_CURRENT, MAP_VOLTAGE, MAP_FREQUENCY, MAP_POWER_FACTOR, MAP_APPARENT_POWER, MAP_ACTIVE_POWER, MAP_REACTIVE_POWER };
+    CRC32 crc;
+    for(uint8_t i=0;i<numebrOfMeasures;i++)
+    {
+        memcpy( buff, &values[indexes[i]], sizeof(float) );
+        buff += sizeof(float);
+        crc.update<float>(values[indexes[i]]);
+    }
+    uint32_t checksum = crc.finalize();
+    memcpy( buff, &checksum, sizeof(float) ); buff += sizeof(float);
+    char end = PROTOCOL_END;
+    memcpy( buff, &end, sizeof(char) );
+    return true;
 }
 
 void CommunicationManager::broadcast(std::unordered_map<const char *, float> values)
 {
     String data = this->formatMeasuresBroadcast(values);
+    char binaryData[SIZE_OF_BINARY_BROADCAST_PROTOCOL];
+    memset(binaryData, 0, sizeof(binaryData));
+    this->formatBinaryMeasuresBroadcast(values, binaryData, SIZE_OF_BINARY_BROADCAST_PROTOCOL);
 
-    lora->write(data);
+    lora->write(binaryData);
     serial->write(data);
 
     if (!isWifiConnected)
         Serial.println("> Couldn't broadcast due to no wifi connection.");
 
-    mqtt->publish((char *)WiFi.macAddress().c_str(), (char *)data.c_str());
-    mqtt->publish(MQTT_GENERAL_TOPIC, (char *)WiFi.macAddress().c_str());
+    mqtt->publish(MQTT_GENERAL_TOPIC, WiFi.macAddress().c_str());
+    // String broadcast
+    // mqtt->publish(WiFi.macAddress().c_str(), data.c_str());
+    // Binary broadcast
+    mqtt->publish(WiFi.macAddress().c_str(), (const char*) binaryData, SIZE_OF_BINARY_BROADCAST_PROTOCOL);
     udp->broadcast((char *)WiFi.macAddress().c_str());
 }
 
@@ -137,7 +176,8 @@ void CommunicationManager::stopWifiCommunications()
 
 String CommunicationManager::formatProtocol(char id, String payload)
 {
-    return String(PROTOCOL_HEADER) + String(id) + payload + String(PROTOCOL_END);
+    uint32_t checksum = CRC32::calculate( payload.c_str(), payload.length());
+    return String(PROTOCOL_HEADER) + String(id) + payload + ";" + String(checksum) + String(PROTOCOL_END);
 }
 
 String CommunicationManager::formatACK(char id)
@@ -232,6 +272,12 @@ String CommunicationManager::parser(String data)
         Serial.printf("Protocol %c - Print status\n\t%s\n", id, data.c_str());
         values = this->callback(id, params);
         return this->formatACK(id);
+    }
+    case PROTOCOL_RESET_BOARD:
+    {
+        Serial.printf("Protocol %c - Reset board\n\t%s\n", id, data.c_str() );
+        ESP.restart();
+        return this->formatACK(id);     // Only to keep the pattern
     }
     default:
     {

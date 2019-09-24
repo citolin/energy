@@ -2,6 +2,7 @@
 #include <functional>
 
 #include "MQTTSingleton.h"
+#include "../events.h"
 
 void onMessage(String &topic, String &payload) {
 	MQTTAbstraction *abs = MQTTSingleton::getInstance("");
@@ -55,11 +56,18 @@ void MQTTAbstraction::parser(String &topic, String &payload) {
 	this->callCallback(payload);
 }
 
-void MQTTAbstraction::publish(char *topic, char *data) {
+void MQTTAbstraction::publish(const char *topic, const char *data, int length)
+{
 	if(!WiFi.isConnected())
 		return;
 
-	this->client.publish( (const char*) topic, (const char*) data);
+	this->client.publish( (const char*) topic, data, length );
+}
+
+void MQTTAbstraction::publish(const char *topic, const char *data) {
+	if(!WiFi.isConnected())
+		return;
+	this->client.publish( topic, data);
 }
 
 void MQTTAbstraction::loop() {
