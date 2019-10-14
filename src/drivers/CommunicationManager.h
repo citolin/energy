@@ -12,26 +12,19 @@
 #include "udp/UDPAbstraction.h"
 #include "lora/LORA.h"
 
+#define READ_LENGTH    0        // Because the ID get's removed
 #define MINIMAL_PROTOCOL_SIZE 3
 #define INDEX_HEADER 0
 #define PROTOCOL_ID 0
-#define PROTOCOL_HEADER '{'
-#define PROTOCOL_END '}'
-#define ACK 'A'
-// Protocol header index is:    protocol.length() - 2
-//                    {O}\n             4         - 2 =     2
 #define PROTOCOL_LAST_LETTER 2
-
-#define ERROR_PROTOCOL_UNFORMATED   "{XUNFORMATED PROTOCOL}"
-#define ERROR_PROTOCOL_SMALL        "{XPROTOCOL TOO SMALL}"
-#define ERROR_UNKOWN_PROTOCOL       "{XUNKOWN PROTOCOL}"
 
 #define INDEX_WIFI          0
 #define INDEX_PASSWORD      1
 
 #define MQTT_GENERAL_TOPIC "/devices"
-#define BROKER "172.17.5.81"
-
+// #define BROKER "192.168.0.7"
+// #define BROKER "35.247.213.52"
+#define BROKER "172.17.1.200"
 
 class CommunicationManager
 {

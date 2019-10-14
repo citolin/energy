@@ -17,7 +17,10 @@ void WIFI::connectToWifiSynch(const char *ssid, const char *password)
 
 void WIFI::connectToWifiAssynch(const char *ssid, const char *password)
 {
-	if(WiFi.status() != WL_CONNECTED)
+    Serial.printf("[WIFI] Connecting to %s - %s\n", ssid, password);
+    // WiFi.setAutoConnect(true);
+    // if( WiFi.status() == WL_IDLE_STATUS || WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_DISCONNECTED )
+    if(WiFi.status() != WL_CONNECTED )
 		WiFi.begin(ssid, password);
 }
 

@@ -10,4 +10,13 @@ MQTTAbstraction* MQTTSingleton::getInstance(const char *broker)
     return instance;
 }
 
+void MQTTSingleton::clearInstance()
+{
+    if(instance)
+    {
+        delete instance;
+        instance = nullptr;
+    }
+}
+
 MQTTSingleton::MQTTSingleton() { }

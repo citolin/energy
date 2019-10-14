@@ -11,6 +11,7 @@ class MQTTSingleton {
 
     public:
         static MQTTAbstraction* getInstance(const char *broker);
+        static void clearInstance();
 };
 
 #endif

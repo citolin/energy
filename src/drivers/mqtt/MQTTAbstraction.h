@@ -17,6 +17,8 @@ private:
     MQTTClient client;
     String broker;
 
+    void begin();
+
 public:
     MQTTAbstraction(const char *broker);
     ~MQTTAbstraction();

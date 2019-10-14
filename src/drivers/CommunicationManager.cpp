@@ -1,7 +1,7 @@
 #include "CommunicationManager.h"
 
 #include <CRC32.h>
-#include "events.h"
+#include "protocol.h"
 #include "../utils/utils.h"
 #include "eeprom/eeprom-data.h"
 
@@ -10,15 +10,19 @@ CommunicationManager::CommunicationManager()
     isWifiConnected = false;
     this->callback = nullptr;
 
-    // 1. Connect to Wifi
-    WiFi.onEvent(std::bind(&CommunicationManager::onWiFiEvent, this, std::placeholders::_1));
-    std::pair<String, String> wifiData = DATA::readWifi();
-    WIFI::connectToWifiAssynch(wifiData.first.c_str(), wifiData.second.c_str());
+    // // 1. Start HTTP API
+    // server = new HTTPServer();
+    // server->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onHTTPCallback, this, std::placeholders::_1)));
+    // Serial.println("> Started HTTP Server");
 
-    // 2. Connect to MQTT Broker
+    // // 2. Start UDP Socket
+    // udp = new UDPAbstraction();
+    // udp->registerCallback(static_cast<std::function<void(String, String)>>(std::bind(&CommunicationManager::onUDPCallback, this, std::placeholders::_1, std::placeholders::_2)));
+
+    // 3. Connect to MQTT Broker
+    // MQTTSingleton::clearInstance();
     mqtt = MQTTSingleton::getInstance(BROKER);
     mqtt->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onMQTTCallback, this, std::placeholders::_1)));
-
     Serial.println("> Started MQTT Client");
 
     // 3. Start reading Serial
@@ -33,15 +37,10 @@ CommunicationManager::CommunicationManager()
 
     Serial.println("> Started LORA Reader");
 
-    // 5. Start HTTP API
-    server = new HTTPServer();
-    server->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onHTTPCallback, this, std::placeholders::_1)));
-
-    Serial.println("> Started HTTP Server");
-
-    // 6. Start UDP Socket
-    udp = new UDPAbstraction();
-    udp->registerCallback(static_cast<std::function<void(String, String)>>(std::bind(&CommunicationManager::onUDPCallback, this, std::placeholders::_1, std::placeholders::_2)));
+    // 1. Connect to Wifi
+    WiFi.onEvent(std::bind(&CommunicationManager::onWiFiEvent, this, std::placeholders::_1));
+    std::pair<String, String> wifiData = DATA::readWifi();
+    WIFI::connectToWifiAssynch(wifiData.first.c_str(), wifiData.second.c_str());
 }
 
 CommunicationManager::~CommunicationManager() {}
@@ -87,39 +86,48 @@ void CommunicationManager::onLORACallback(String data)
 
 String CommunicationManager::formatMeasuresBroadcast(std::unordered_map<const char *, float> values)
 {
-    String s = ";" + String(values[MAP_CURRENT]) + ";" + String(values[MAP_VOLTAGE]) + ";" + String(values[MAP_FREQUENCY]) + ";" + String(values[MAP_POWER_FACTOR]) + ";" + String(values[MAP_REACTIVE_POWER]) + ";" + String(values[MAP_APPARENT_POWER]) + ";" + String(values[MAP_ACTIVE_POWER]);    
+    String s = ";" + String(values[MAP_CURRENT]) + ";" + String(values[MAP_VOLTAGE]) + ";" + String(values[MAP_FREQUENCY]) + ";" + String(values[MAP_POWER_FACTOR]) + ";" + String(values[MAP_REACTIVE_POWER]) + ";" + String(values[MAP_APPARENT_POWER]) + ";" + String(values[MAP_ACTIVE_POWER]);
     return this->formatProtocol(PROTOCOL_BROADCAST, s);
 }
 
-bool CommunicationManager::formatBinaryMeasuresBroadcast(std::unordered_map<const char*, float> values, char *str, size_t length)
+bool CommunicationManager::formatBinaryMeasuresBroadcast(std::unordered_map<const char *, float> values, char *str, size_t length)
 {
-    // HEADER + LORA_ID + CMMD_ID       1 + 1 + 1 = 3 bytes
+    // HEADER + LENGTH + CMMD_ID + LORA_ID       1 + 1 + 1 + 1 = 4 bytes
     //  I, T, F, FP, PA, PAT, PR        4 * 7 = 28 bytes
     // CHECKSUM END_OF_PACKAGE          4 + 1 = 5 bytes
-    //                           Total: 36 bytes
-    if(length != SIZE_OF_BINARY_BROADCAST_PROTOCOL)
-        return false; 
+    //                           Total: 37 bytes
+    if (length != SIZE_OF_BINARY_BROADCAST_PROTOCOL)
+        return false;
 
     char *buff = str;
-    char header = PROTOCOL_HEADER;
+    char header = PROTOCOL_STX;
     char loraID = DATA::readLoraID();
     char cmmd = PROTOCOL_BROADCAST;
-    memcpy( buff, &header, sizeof(char) ); buff++;
-    memcpy( buff, &loraID, sizeof(char) ); buff++;
-    memcpy( buff, &cmmd, sizeof(char) ); buff++;
-    uint8_t numebrOfMeasures = 7;
-    const char *indexes[numebrOfMeasures] = { MAP_CURRENT, MAP_VOLTAGE, MAP_FREQUENCY, MAP_POWER_FACTOR, MAP_APPARENT_POWER, MAP_ACTIVE_POWER, MAP_REACTIVE_POWER };
+    char payloadLength = PAYLOAD_OF_BROADCAST_PROTOCOL;
+    char end = PROTOCOL_ETX;
+    memcpy(buff, &header, sizeof(char));
+    buff++;
+    memcpy(buff, &payloadLength, sizeof(char));
+    buff++;
+    memcpy(buff, &cmmd, sizeof(char));
+    buff++;
+    memcpy(buff, &loraID, sizeof(char));
+    buff++;
+
+    uint8_t numberOfMeasures = 7;
+    const char *indexes[numberOfMeasures] = {MAP_CURRENT, MAP_VOLTAGE, MAP_FREQUENCY, MAP_POWER_FACTOR, MAP_APPARENT_POWER, MAP_ACTIVE_POWER, MAP_REACTIVE_POWER};
     CRC32 crc;
-    for(uint8_t i=0;i<numebrOfMeasures;i++)
+    for (uint8_t i = 0; i < numberOfMeasures; i++)
     {
-        memcpy( buff, &values[indexes[i]], sizeof(float) );
+        memcpy(buff, &values[indexes[i]], sizeof(float));
         buff += sizeof(float);
         crc.update<float>(values[indexes[i]]);
     }
+    memcpy(buff, &end, sizeof(char));
+    buff++;
     uint32_t checksum = crc.finalize();
-    memcpy( buff, &checksum, sizeof(float) ); buff += sizeof(float);
-    char end = PROTOCOL_END;
-    memcpy( buff, &end, sizeof(char) );
+    memcpy(buff, &checksum, sizeof(float));
+    buff += sizeof(float);
     return true;
 }
 
@@ -136,12 +144,15 @@ void CommunicationManager::broadcast(std::unordered_map<const char *, float> val
     if (!isWifiConnected)
         Serial.println("> Couldn't broadcast due to no wifi connection.");
 
+    if(!mqtt)
+        return;
+
     mqtt->publish(MQTT_GENERAL_TOPIC, WiFi.macAddress().c_str());
     // String broadcast
     // mqtt->publish(WiFi.macAddress().c_str(), data.c_str());
     // Binary broadcast
-    mqtt->publish(WiFi.macAddress().c_str(), (const char*) binaryData, SIZE_OF_BINARY_BROADCAST_PROTOCOL);
-    udp->broadcast((char *)WiFi.macAddress().c_str());
+    mqtt->publish(WiFi.macAddress().c_str(), (const char *)binaryData, SIZE_OF_BINARY_BROADCAST_PROTOCOL);
+    // udp->broadcast((char *)WiFi.macAddress().c_str());
 }
 
 void CommunicationManager::loop()
@@ -149,17 +160,21 @@ void CommunicationManager::loop()
     serial->loop();
     lora->loop();
 
-    if (!isWifiConnected)
-        return;
+    if(mqtt)
+        mqtt->loop();
 
-    mqtt->loop();
-    udp->loop();
+    if (!isWifiConnected)
+    {
+        // std::pair<String, String> wifiData = DATA::readWifi();
+        // WIFI::connectToWifiAssynch(wifiData.first.c_str(), wifiData.second.c_str());
+        return;
+    }
+
+    // udp->loop();
 }
 
 void CommunicationManager::startWifiCommunications()
 {
-    udp->start();
-    server->start();
     mqtt->start();
 
     isWifiConnected = true;
@@ -167,22 +182,21 @@ void CommunicationManager::startWifiCommunications()
 
 void CommunicationManager::stopWifiCommunications()
 {
-    udp->stop();
-    server->stop();
-    mqtt->stop();
+    // udp->stop();
+    // server->stop();
 
     isWifiConnected = false;
 }
 
 String CommunicationManager::formatProtocol(char id, String payload)
 {
-    uint32_t checksum = CRC32::calculate( payload.c_str(), payload.length());
-    return String(PROTOCOL_HEADER) + String(id) + payload + ";" + String(checksum) + String(PROTOCOL_END);
+    uint32_t checksum = CRC32::calculate(payload.c_str(), payload.length());
+    return String(PROTOCOL_STX) + String(id) + payload + ";" + String(checksum) + String(PROTOCOL_ETX);
 }
 
 String CommunicationManager::formatACK(char id)
 {
-    return String(PROTOCOL_HEADER) + String(ACK) + String(id) + String(PROTOCOL_END);
+    return String(PROTOCOL_STX) + String(ACK) + String(id) + String(PROTOCOL_ETX);
 }
 
 String CommunicationManager::preParser(String data)
@@ -192,12 +206,14 @@ String CommunicationManager::preParser(String data)
     short start = 0;
     for (short i = 0; i < data.length(); i++)
     {
-        if (data[i] == PROTOCOL_HEADER && !reading)
+        if (data[i] == PROTOCOL_STX && !reading)
         {
-            reading = true;
+            uint8_t protocolLength = data[i + 1];
+            if (protocolLength >= data.length())
+                reading = true;
             start = i + 1;
         }
-        else if (data[i] == PROTOCOL_END && reading)
+        else if (data[i] == PROTOCOL_ETX && reading)
         {
             v.push_back(data.substring(start, i));
             reading = false;
@@ -275,9 +291,9 @@ String CommunicationManager::parser(String data)
     }
     case PROTOCOL_RESET_BOARD:
     {
-        Serial.printf("Protocol %c - Reset board\n\t%s\n", id, data.c_str() );
+        Serial.printf("Protocol %c - Reset board\n\t%s\n", id, data.c_str());
         ESP.restart();
-        return this->formatACK(id);     // Only to keep the pattern
+        return this->formatACK(id); // Only to keep the pattern
     }
     default:
     {
@@ -290,12 +306,13 @@ String CommunicationManager::parser(String data)
 
 void CommunicationManager::onWiFiEvent(WiFiEvent_t event)
 {
-    Serial.print("> ");
+    Serial.printf("> ", event);
 
     switch (event)
     {
     case SYSTEM_EVENT_WIFI_READY:
         Serial.println("WiFi interface ready");
+        stopWifiCommunications();
         break;
     case SYSTEM_EVENT_SCAN_DONE:
         Serial.println("Completed scan for access points");
@@ -308,6 +325,7 @@ void CommunicationManager::onWiFiEvent(WiFiEvent_t event)
         break;
     case SYSTEM_EVENT_STA_CONNECTED:
         Serial.println("Connected to access point");
+        // TODO - I have seen it stucked here, no IP granted
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         Serial.println("Disconnected from WiFi access point");
