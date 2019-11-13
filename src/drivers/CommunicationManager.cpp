@@ -11,9 +11,9 @@ CommunicationManager::CommunicationManager()
     this->callback = nullptr;
 
     // // 1. Start HTTP API
-    // server = new HTTPServer();
-    // server->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onHTTPCallback, this, std::placeholders::_1)));
-    // Serial.println("> Started HTTP Server");
+    server = new HTTPServer();
+    server->registerCallback(static_cast<std::function<void(String)>>(std::bind(&CommunicationManager::onHTTPCallback, this, std::placeholders::_1)));
+    Serial.println("> Started HTTP Server");
 
     // // 2. Start UDP Socket
     // udp = new UDPAbstraction();

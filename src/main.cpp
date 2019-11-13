@@ -6,6 +6,8 @@ ApplicationManager *app;
 
 #define EEPROM_SIZE 4096
 
+// {OICTS;icts@icts}
+
 void setup()
 {
 	Serial.begin(9600);

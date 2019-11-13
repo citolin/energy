@@ -18,13 +18,16 @@
 #define PROTOCOL_ID 0
 #define PROTOCOL_LAST_LETTER 2
 
+// {OICTS;icts@icts}
+
 #define INDEX_WIFI          0
 #define INDEX_PASSWORD      1
 
 #define MQTT_GENERAL_TOPIC "/devices"
 // #define BROKER "192.168.0.7"
 // #define BROKER "35.247.213.52"
-#define BROKER "172.17.1.200"
+// #define BROKER "172.17.1.200"
+#define BROKER "172.17.1.179"
 
 class CommunicationManager
 {

@@ -17,7 +17,7 @@ MQTTAbstraction::MQTTAbstraction(const char *broker)
 {
 	this->broker = String(broker);
 	Serial.println("[MQTT] Begin");
-	this->client.setConnectionTimeout(2000);
+	// this->client.setConnectionTimeout(2000);
 	this->client.setOptions(10, true, 1000);
 	this->client.begin(this->broker.c_str(), this->net);
 	// - Shameful what I did here.

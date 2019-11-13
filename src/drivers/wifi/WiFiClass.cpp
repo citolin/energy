@@ -1,65 +1,23 @@
-#include "wifi-utils.h"
+#include "WiFiClass.h"
 
-void WIFI::connectToWifiSynch(const char *ssid, const char *password)
+WiFiClass::WiFiClass()
 {
+}
 
-    // Set your Static IP address
-    IPAddress local_IP(172, 17, 1, 181);
-    // Set your Gateway IP address
-    IPAddress gateway(172, 17, 0, 3);
+WiFiClass::~WiFiClass()
+{
+}
 
-    IPAddress subnet(255, 255, 0, 0);
-    IPAddress primaryDNS(1, 1, 1, 1);   //optional
-    IPAddress secondaryDNS(8, 8, 4, 4); //optional
+void WiFiClass::connectToWifi(const char *ssid, const char *password)
+{
+    this->ssid = ssid;
+    this->password = password;
 
-    if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
-    {
-        Serial.println("> No WiFi.");
-    }
-
+    Serial.printf("> Starting WiFi:\n\tSSID: %s\n\tPASSWORD: %s\n", ssid, password);
     WiFi.begin(ssid, password);
-
-    Serial.print("Attempting to connect to WiFi ");
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.print(".");
-        delay(1000);
-    }
-
-    Serial.println("\nWiFi connected.");
-    Serial.printf("\nSSID: %s\nPASSWORD: %s\nIP: %s\n\n", ssid, password, WiFi.localIP().toString().c_str());
 }
 
-void WIFI::connectToWifiAssynch(const char *ssid, const char *password)
-{
-    Serial.printf("[WIFI] Connecting to %s - %s\n", ssid, password);
-    // Set your Static IP address
-    IPAddress local_IP(172, 1   7, 1, 181);
-    // Set your Gateway IP address
-    IPAddress gateway(172, 17, 0, 3);
-
-    IPAddress subnet(255, 255, 0, 0);
-    IPAddress primaryDNS(1, 1, 1, 1);   //optional
-    IPAddress secondaryDNS(8, 8, 4, 4); //optional
-
-    if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
-    {
-        Serial.println("> No WiFi.");
-    }
-    // WiFi.setAutoConnect(true);
-    // if( WiFi.status() == WL_IDLE_STATUS || WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_DISCONNECTED )
-    if (WiFi.status() != WL_CONNECTED)
-        WiFi.begin(ssid, password);
-}
-
-// TODO -- Better understanding of how to reconnect
-void WIFI::reconnectToWifi()
-{
-    // if( !WiFi.isConnected() )
-    //     WiFi.reconnect();
-}
-
-void WIFI::WiFiEvent(WiFiEvent_t event)
+void WiFiClass::onEvent()
 {
     // Serial.printf("[WiFi-event] event: %d\n", event);
     Serial.print("> ");
